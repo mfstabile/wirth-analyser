@@ -1,0 +1,9 @@
+cd terminal
+ruby tc_terminal_compiler.rb
+cd ..
+cd expression
+ruby tc_expression_compiler.rb
+cd ..
+cd lisp
+ruby tc_lisp_compiler.rb
+cd ..
