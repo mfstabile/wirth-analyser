@@ -167,61 +167,50 @@ class Analyser
       tokenlines[variable] = line.split(" ")
     end
 
-    finalhash = Hash.new
-    finalhash[$root] = [substitute(tokenlines,tokenlines[$root]),"."].flatten!
-    finalhash
+    loop do
+      $changes = false
+      recursive = detect_recursion(tokenlines)
+      tokenlines.keys.each do |key|
+        new_tokens = substitute_variables(tokenlines,key,recursive)
+        tokenlines[key] = new_tokens
+      end
+      break if $changes == false
+    end
 
+    tokenlines.keys.each do |key|
+      tokenlines[key] << "."
+      puts key
+      puts tokenlines[key].join("")
+    end
 
-    # loop do
-    #   terminals = []
-    #   tokenlines.each do |key, value|
-    #     terminals << key if not has_variables(value)
-    #   end
-    #
-    #   break if terminals.empty?
-    #   current = terminals.pop
-    #   tokenlines.each do |key, value|
-    #     newvalue = value.map! { |x| x == current ? ["(",tokenlines[current],")"] : x }.flatten!
-    #     tokenlines[key] = value
-    #   end
-    #   tokenlines.delete(current)
-    # end
-
-    # finalhash = Hash.new
-    # variables = tokenlines.keys
-    # variables.each do |var|
-    #   newexpression = substitute(tokenlines,var,[])
-    #   finalhash[var] = [newexpression,"."].flatten!
-    # end
-    # # puts finalhash["Commands"].join(" ")
-    # finalhash
-
+    tokenlines
   end
 
-  def substitute(tokenlines,token)
-    expression = token
-    current = Array.new
-    loop do
-      break if not has_variables(expression)
-      expression.map do |token|
-        if (not is_variable(token)) || token == $root
-          current << token
-        else
-          current << ["(",tokenlines[token],")"]
+  def substitute_variables(tokenlines,key,recursive)
+    new_tokens = Array.new
+    tokenlines[key].each do |token|
+      if (not is_variable(token)) || recursive.include?(token)
+        new_tokens << token
+      else
+        new_tokens << ["(",tokenlines[token],")"]
+        $changes = true
+      end
+    end
+    new_tokens.flatten!
+    new_tokens
+  end
+
+  def detect_recursion(tokenlines)
+    recursive = Array.new
+    tokenlines.keys.each do |key|
+      tokenlines[key].each do |var|
+        if key == var
+          recursive << key
+          break
         end
       end
-      current.flatten!
-      expression = current
-      current = Array.new
     end
-    expression
-  end
-
-  def has_variables(tokenline)
-    tokenline.each do |token|
-      return true if is_variable(token) && token != $root
-    end
-    false
+    recursive
   end
 
   def syntactic(tokens)
