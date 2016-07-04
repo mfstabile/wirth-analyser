@@ -6,14 +6,15 @@ class Analyser
   def build(file)
     check_wirth(file)
     puts "Building Compiler"
-    tokenlines = reduce_wirth(file) ##fix
-    $machines = Hash.new
+    tokenlines = reduce_wirth(file)
+    @machines = Hash.new
     variables = tokenlines.keys
     variables.each do |var|
+      puts "Creating machine for #{var}"
       automata = Automata.new
       automata.build(tokenlines[var])
-      $machines[var] = automata
-      break
+      automata.set_name(var)
+      @machines[var] = automata
     end
   end
 
@@ -24,7 +25,7 @@ class Analyser
   end
 
   def expression(state)
-    current_token = $tokens.shift
+    current_token = @tokens.shift
     case state
     when 6
       if current_token[0] == "("
@@ -38,7 +39,7 @@ class Analyser
       elsif is_terminal(current_token[0])
         expression(7)
       else
-        $tokens.insert(0,current_token)
+        @tokens.insert(0,current_token)
         expression(7)
       end
     when 7
@@ -55,11 +56,11 @@ class Analyser
       elsif is_terminal(current_token[0])
         expression(7)
       else
-        $tokens.insert(0,current_token)
+        @tokens.insert(0,current_token)
         return true
       end
     when 8
-      $tokens.insert(0,current_token)
+      @tokens.insert(0,current_token)
       if expression(6)
         expression(9)
       end
@@ -70,7 +71,7 @@ class Analyser
         raise Exception.new("Malformed expression on line #{current_token[1]}, expected ) but found #{current_token[0]} instead")
       end
     when 10
-      $tokens.insert(0,current_token)
+      @tokens.insert(0,current_token)
       if expression(6)
         expression(11)
       end
@@ -81,7 +82,7 @@ class Analyser
         raise Exception.new("Malformed expression on line #{current_token[1]}, expected ] but found #{current_token[0]} instead")
       end
     when 12
-      $tokens.insert(0,current_token)
+      @tokens.insert(0,current_token)
       if expression(6)
         expression(13)
       end
@@ -95,14 +96,14 @@ class Analyser
   end
 
   def grammar(state)
-    if $tokens.size == 0
+    if @tokens.size == 0
       if state == 5
         return true
       else
         raise Exception.new("Unexpected end of file")
       end
     end
-    current_token = $tokens.shift
+    current_token = @tokens.shift
     case state
     when 1
       if is_variable(current_token[0])
@@ -117,7 +118,7 @@ class Analyser
         raise Exception.new("Expected = sign on line #{current_token[1]}, but found #{current_token[0]} instead")
       end
     when 3
-      $tokens.insert(0,current_token)
+      @tokens.insert(0,current_token)
       if expression(6)
         grammar(4)
       else
@@ -139,11 +140,11 @@ class Analyser
   end
 
   def tokenize(file)
-    $tokens = []
+    @tokens = []
     file = File.new(file, "r")
     line_number = 1
     while (line = file.gets)
-      line.split(" ").each { |token| $tokens << [token,line_number] }
+      line.split(" ").each { |token| @tokens << [token,line_number] }
       line_number += 1
     end
   end
@@ -159,28 +160,31 @@ class Analyser
   def reduce_wirth(file)
     tokenlines = Hash.new
     file = File.new(file, "r")
-    $root = nil
+    @root = nil
     while (line = file.gets)
       variable = line.split("=",2).first[0..-2]
-      $root ||= variable
+      @root ||= variable
       line = line.split("=",2).last[1..-3]
       tokenlines[variable] = line.split(" ")
     end
 
     loop do
-      $changes = false
+      @changes = false
       recursive = detect_recursion(tokenlines)
       tokenlines.keys.each do |key|
         new_tokens = substitute_variables(tokenlines,key,recursive)
         tokenlines[key] = new_tokens
       end
-      break if $changes == false
+      break if @changes == false
     end
 
     tokenlines.keys.each do |key|
       tokenlines[key] << "."
+      tokenlines[key].flatten!
       puts key
-      puts tokenlines[key].join("")
+      puts tokenlines[key].join(" ")
+      puts
+      puts
     end
 
     tokenlines
@@ -193,7 +197,7 @@ class Analyser
         new_tokens << token
       else
         new_tokens << ["(",tokenlines[token],")"]
-        $changes = true
+        @changes = true
       end
     end
     new_tokens.flatten!
@@ -214,9 +218,9 @@ class Analyser
   end
 
   def syntactic(tokens)
-    $tokenController = TokenController.new tokens
+    @tokenController = TokenController.new tokens
     $error = nil
-    if run($root,0)
+    if run(@root,0)
       return true
     else
       puts_red $error
@@ -225,29 +229,30 @@ class Analyser
   end
 
   def run(machine,state)
-    if $tokenController.empty
-      if $machines[machine].is_final(state)
+    if @tokenController.empty
+      if @machines[machine].is_final(state)
         return true
       else
         $error ||= "Unexpected end of file"
         return false
       end
     end
-    p "-",machine,"- error" if $machines[machine] == nil
-    next_states = $machines[machine].get_next_states([state,$tokenController.get_first_trans])
+    raise "Compiler error analysing #{machine}. Please send a notification to the developer" if @machines[machine] == nil
+    next_states = @machines[machine].get_next_states([state,@tokenController.get_first_trans])
     if next_states != nil
-      $tokenController.consume
+      @tokenController.consume
       next_states.each do |next_state|
         return true if run(machine,next_state)
       end
     end
-    next_machine = $machines[machine].get_submachine_transitions[state]
+    next_machine = @machines[machine].get_submachine_transitions[state]
     if next_machine != nil
       run(next_machine,0)
-      next_s = $machines[machine].get_next_states([state,next_machine])
+      next_s = @machines[machine].get_next_states([state,next_machine])
+      $error = nil
       return run(machine,next_s.first)
     end
-    $error ||= "Error on line #{$tokenController.get_first_line}, unexpected #{$tokenController.get_first_trans}"
+    $error ||= "Error on line #{@tokenController.get_first_line}, unexpected #{@tokenController.get_first_trans}"
     return false
     puts "Compiler error. Please send a notification to the developer"
   end
