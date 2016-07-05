@@ -10,7 +10,6 @@ class Analyser
     @machines = Hash.new
     variables = tokenlines.keys
     variables.each do |var|
-      puts "Creating machine for #{var}"
       automata = Automata.new
       automata.build(tokenlines[var])
       automata.set_name(var)
@@ -181,10 +180,6 @@ class Analyser
     tokenlines.keys.each do |key|
       tokenlines[key] << "."
       tokenlines[key].flatten!
-      puts key
-      puts tokenlines[key].join(" ")
-      puts
-      puts
     end
 
     tokenlines

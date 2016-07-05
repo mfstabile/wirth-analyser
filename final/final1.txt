@@ -1,0 +1,17 @@
+MULT3 ( PARAM ) begin A = 3 ; return A * PARAM; end
+FUNC ( P ) begin
+  if 3 >= P then
+    if 5 < P then
+      print 1 + MULT3( 22 );
+    end
+  end
+  return 2 * PARAM;
+end
+begin_program
+  B = 5 * 2;
+  if 3 >= B then
+    print 1 + MULT3 ( 22 );
+  else
+    print 2 + TEST ( 23 );
+  end
+end_program

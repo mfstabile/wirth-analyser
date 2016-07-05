@@ -1,0 +1,15 @@
+Program = { Function } "begin_program" Commands "end_program" .
+Function = Id "(" Parameter { "," Parameter } ")" "begin" Commands "return" Exp ";" "end" .
+Commands = { Assign | Print | Conditional } .
+Assign = Id "=" Exp ";" .
+Exp = [ "-" ] Exp1 { ( "+" | "-" | "*" | "/" ) Exp1 } .
+Exp1 = Id | Num | "(" Exp ")" | FuncCall .
+Print = "print" Exp ";" .
+Conditional = "if" BoolExp "then" Commands [ "else" Commands ] "end" .
+BoolExp = Exp ( ">" | ">=" | "<" | "<=" | "=" | "!=" ) Exp .
+FuncCall = Id "(" Parameter { "," Parameter } ")" .
+Parameter = ( Id | Num ) .
+Id = Char { Char | Digit } .
+Char = "character" .
+Num = Digit { Digit } .
+Digit = "number" .
